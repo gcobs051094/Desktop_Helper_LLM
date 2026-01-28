@@ -1,0 +1,36 @@
+## ADDED Requirements
+
+### Requirement: LLM 對話功能
+系統必須能夠接收使用者的文字或語音輸入，透過 Gemini API 處理並返回回應，以對話泡泡框的形式顯示在角色視窗中。
+
+#### Scenario: 文本輸入對話
+- **WHEN** 使用者在文本輸入框中輸入文字並提交
+- **THEN** 系統將文字發送給 Gemini API（gemini-2.5-flash-lite）
+- **AND** API 回應以對話泡泡框的形式顯示在角色旁邊
+- **AND** 泡泡框自動調整大小以適應文字內容
+
+#### Scenario: 語音輸入準備
+- **WHEN** 使用者點擊語音輸入按鈕
+- **THEN** 顯示麥克風圖標按鈕（UI 準備完成）
+- **AND** 為後續 Gemini STT API 整合預留接口
+
+#### Scenario: API 錯誤處理
+- **WHEN** Gemini API 請求失敗或超時
+- **THEN** 在泡泡框中顯示錯誤訊息
+- **AND** 不影響應用程式的正常運行
+
+#### Scenario: 對話歷史
+- **WHEN** 使用者進行多次對話
+- **THEN** 系統維護對話上下文
+- **AND** 新的回應顯示在泡泡框中，舊的回應可以自動消失或保留
+
+## MODIFIED Requirements
+
+### Requirement: 桌面角色顯示
+系統必須能夠在 Windows 桌面上顯示動漫角色形象，角色應以透明背景的形式呈現，不阻擋桌面內容。
+
+#### Scenario: 對話 UI 整合
+- **WHEN** 角色視窗顯示時
+- **THEN** 在視窗底部顯示文本輸入框和語音輸入按鈕
+- **AND** 對話泡泡框顯示在角色上方或旁邊
+- **AND** UI 組件不影響角色的正常顯示和動畫
