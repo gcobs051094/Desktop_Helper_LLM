@@ -16,8 +16,7 @@
 - 🎤 語音輸入按鈕（UI 準備完成，STT 整合待後續）
 
 ## Demo 影片
-
-<video src="sample/20260129_103316.mp4" controls width="800"></video>
+<video src="https://github.com/user-attachments/assets/1b8edcb8-43ea-464f-8b72-8c6436915af9" width="352" height="720"></video>
 
 *示範功能：角色顯示、角色切換、部位點擊互動、LLM 串流對話*
 
