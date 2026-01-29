@@ -27,3 +27,10 @@
 - [x] 5.2 創建 GIT_SETUP.md 連接指南
 - [x] 5.3 創建 .env.example 範例文件
 - [ ] 5.4 用戶手動執行 Git 命令連接倉庫（見 GIT_SETUP.md）
+
+## 6. 串流對話與發送 / 停止按鈕
+- [x] 6.1 在 `LLMClient` 中實作 `stream_message`，使用 Gemini Streaming API 持續產生回應片段
+- [x] 6.2 在 `DesktopCharacterWindow` 中使用背景執行緒（QThread）串流接收 LLM 回應，並逐步更新對話泡泡框內容
+- [x] 6.3 在視窗底部新增「發送訊息」按鈕（Enter 圖示），點擊或按 Enter 時觸發串流對話
+- [x] 6.4 串流期間將發送按鈕切換為「停止」圖示（黑色方形），再次點擊時停止串流並不再更新泡泡框
+- [x] 6.5 串流期間禁止角色點擊互動；串流自然結束或被停止後才恢復角色點擊

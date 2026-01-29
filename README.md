@@ -1,5 +1,6 @@
 # Desktop Helper - 桌面動漫角色 LLM 助手
 
+基於OpenSpec加速開發 & 可追朔之專案架構，
 一個在 Windows 桌面上顯示動漫角色形象的 LLM 助手應用程式。
 
 ## 功能特性

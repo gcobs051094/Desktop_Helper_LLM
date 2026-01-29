@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 from typing import Optional
 
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QPoint
 from PyQt6.QtOpenGLWidgets import QOpenGLWidget
 
 try:
@@ -28,6 +28,8 @@ class Live2DWidget(QOpenGLWidget):
     
     # 信號：模型載入完成
     model_loaded = pyqtSignal(bool)
+    # 信號：點擊檢測到部位
+    part_clicked = pyqtSignal(str)  # 發送 Hit Area ID
     
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -39,7 +41,12 @@ class Live2DWidget(QOpenGLWidget):
         self.animation_timer.timeout.connect(self.update)
         
         # 視圖參數
-        self.scale = 1.0
+        # 以「基準視窗尺寸」為參考，視窗變大/變小時，角色也跟著縮放
+        self._base_widget_w = 340
+        self._base_widget_h = 430  # 對應新視窗高度 480 - 輸入區 50
+        # 增加縮放讓角色填滿更多空間，減少上下空白
+        self._base_scale = 1.0  # 從 0.6 增加到 1.3，讓角色更大更貼齊邊界
+        self.scale = self._base_scale
         self.offset_x = 0.0
         self.offset_y = 0.0
         
@@ -74,6 +81,7 @@ class Live2DWidget(QOpenGLWidget):
         """處理視窗大小變化"""
         if self.model and w > 0 and h > 0:
             self.model.Resize(w, h)
+            self._update_scale_by_widget()
     
     def paintGL(self):
         """繪製 Live2D 角色"""
@@ -151,6 +159,9 @@ class Live2DWidget(QOpenGLWidget):
                 # 如果視窗大小還未設置，使用預設大小
                 self.model.Resize(400, 600)
             
+            # 依照 widget 尺寸更新角色縮放
+            self._update_scale_by_widget()
+            
             # 開始動畫計時器
             if not self.animation_timer.isActive():
                 self.animation_timer.start(16)  # ~60 FPS
@@ -186,6 +197,119 @@ class Live2DWidget(QOpenGLWidget):
                     self.model.StartRandomMotion("", priority=1)
                 except:
                     pass
+
+    def _update_scale_by_widget(self):
+        """
+        以基準 widget 尺寸推算 scale，讓「視窗大小」與「角色大小」同步變化。
+        這避免使用 GetCanvasSizePixel（其值常接近貼圖解析度，會把視窗撐爆）。
+        """
+        w = max(1, self.width())
+        h = max(1, self.height())
+        k = min(w / self._base_widget_w, h / self._base_widget_h)
+        # 留一點邊距，避免裁切
+        self.scale = max(0.1, self._base_scale * k * 0.98)
+
+    def play_motion(self, motion_name: str, group: str = "") -> bool:
+        """
+        播放指定動作（目前使用 model3.json 的空名稱 motion group）。
+
+        motion_name: "mtn_02" / "mtn_03" / "mtn_04" / "special_01" ...
+        """
+        if not LIVE2D_AVAILABLE or not self.model:
+            return False
+
+        motion_index_map = {
+            "mtn_02": 0,
+            "mtn_03": 1,
+            "mtn_04": 2,
+            "special_01": 3,
+            "special_02": 4,
+            "special_03": 5,
+        }
+        idx = motion_index_map.get(motion_name, 0)
+
+        # live2d-py 的 StartMotion 第三參數通常是 MotionPriority enum
+        priority = getattr(live2d, "MotionPriority", None)
+        force = getattr(priority, "FORCE", None) if priority else None
+        normal = getattr(priority, "NORMAL", None) if priority else None
+
+        return self._start_motion_with_index(group, idx)
+
+    def _start_motion_with_index(self, group: str, idx: int) -> bool:
+        """
+        以指定的 group + index 播放動作。
+        用於不同角色共用的內部邏輯，會自動處理優先權與 fallback。
+        """
+        if not LIVE2D_AVAILABLE or not self.model:
+            return False
+
+        priority = getattr(live2d, "MotionPriority", None)
+        force = getattr(priority, "FORCE", None) if priority else None
+        normal = getattr(priority, "NORMAL", None) if priority else None
+
+        try:
+            if force is not None:
+                self.model.StartMotion(group, idx, force)
+            elif normal is not None:
+                self.model.StartMotion(group, idx, normal)
+            else:
+                # 後備：某些版本可能接受 int
+                self.model.StartMotion(group, idx, 3)
+            return True
+        except Exception:
+            # 後備：嘗試隨機動作（不同版本參數型態不同）
+            try:
+                if force is not None:
+                    self.model.StartRandomMotion(group, force)
+                else:
+                    self.model.StartRandomMotion(group, 3)
+                return True
+            except Exception:
+                return False
+
+    def play_motion_group(self, group: str, index: int = 0) -> bool:
+        """
+        直接以 motion group + index 播放動作。
+        例如：group="Tap", index=0 / group="Tap@Body", index=0。
+        """
+        return self._start_motion_with_index(group, index)
+    
+    def mousePressEvent(self, event):
+        """處理滑鼠點擊事件，檢測點擊的部位"""
+        if not LIVE2D_AVAILABLE or not self.model:
+            super().mousePressEvent(event)
+            return
+        
+        if event.button() == Qt.MouseButton.LeftButton:
+            # 獲取點擊位置（相對於 widget）
+            x = int(event.position().x())
+            y = int(event.position().y())
+            
+            try:
+                # 使用 Live2D 的 HitPart 檢測點擊的部位
+                hit_parts = self.model.HitPart(x, y, False)
+                
+                if hit_parts and len(hit_parts) > 0:
+                    # HitPart 會回傳「命中的部件 PartId 列表」（通常第一個是最上層）
+                    # 但 PartCore 往往覆蓋面積最大，容易壓過其他部件，所以優先挑選非 PartCore
+                    hit_part_id = hit_parts[0]
+                    for pid in hit_parts:
+                        if pid and pid != "PartCore":
+                            hit_part_id = pid
+                            break
+                    print(f"點擊部位: {hit_part_id}")
+                    
+                    # 發送信號
+                    self.part_clicked.emit(hit_part_id)
+                else:
+                    # 如果沒有命中任何部位，嘗試使用 Hit Areas
+                    # 注意：這需要根據實際的 Live2D API 調整
+                    pass
+                    
+            except Exception as e:
+                print(f"點擊檢測失敗: {e}")
+        
+        super().mousePressEvent(event)
     
     def cleanup(self):
         """清理資源"""

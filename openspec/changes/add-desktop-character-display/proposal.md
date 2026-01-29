@@ -10,12 +10,15 @@
 - 實現視窗置頂、拖動等基本互動功能
 - 實現角色動畫自動播放（待機動畫）
 - 創建主程式入口點和模組化架構
+- 新增集中管理 Live2D 素材的角色素材庫（character library）
+- 支援在多個角色素材之間切換（單一視窗透過按鈕輪流切換角色）
 
 ## Impact
-- 受影響的規範：新增 `desktop-display` 能力
+- 受影響的規範：新增並擴充 `desktop-display` 能力（包含多角色與角色切換）
 - 受影響的代碼：
   - 新建 `src/desktop_window.py`（桌面視窗管理）
   - 新建 `src/live2d_widget.py`（Live2D 渲染引擎）
   - 新建 `src/character_loader.py`（角色資源載入）
-  - 新建 `main.py`（主程式入口）
+  - 新建 `src/character_library.py`（角色素材庫與可用角色清單）
+  - 新建／更新 `main.py`（主程式入口，改為從素材庫選擇預設角色與清單）
 - 新增依賴：PyQt6, live2d-py, PyOpenGL, numpy
